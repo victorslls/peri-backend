@@ -89,8 +89,16 @@ exports.loginUser = async (req, res) => {
 
     await ActivityLog.create({ userId: user._id, action: "Login realizado" });
 
-    // Enviar ambos os tokens
-    res.json({ token: accessToken, refreshToken });
+    // Buscar usuário com campos selecionados (igual ao getMe)
+    const userWithoutSensitiveData = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
+
+    res.json({
+      token: accessToken,
+      refreshToken,
+      user: userWithoutSensitiveData,
+    });
   } catch (error) {
     logger.error("Erro ao fazer login:", error);
     res.status(500).json({ msg: "Erro no servidor" });
