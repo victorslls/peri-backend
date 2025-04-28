@@ -10,12 +10,15 @@ const Joi = require("joi");
 
 // Schema de validação para criação de laudo
 const reportSchema = Joi.object({
-  caseId: Joi.string().required(),
+  case: Joi.string().required(),
   title: Joi.string().required(),
   content: Joi.string().required(),
   type: Joi.string()
     .valid("laudo_pericial", "relatorio_tecnico", "parecer_odontologico")
     .required(),
+  status: Joi.string()
+    .valid("rascunho", "finalizado", "arquivado")
+    .default("rascunho"),
 });
 
 // Criar novo laudo

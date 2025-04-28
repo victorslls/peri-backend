@@ -6,7 +6,15 @@ const logger = require("../utils/logger");
 
 exports.createReport = async (req, res) => {
   try {
+    console.log("Corpo da requisição:", req.body);
+    console.log("Arquivos recebidos:", req.files);
+
     const { case: caseId, title, content, type, status } = req.body;
+
+    if (!caseId) {
+      return res.status(400).json({ message: "ID do caso é obrigatório" });
+    }
+
     const files = req.files;
 
     const caso = await Case.findById(caseId);
