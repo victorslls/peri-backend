@@ -4,6 +4,7 @@ const cors = require("./config/cors");
 const errorHandler = require("./middleware/errorHandler");
 const path = require("path");
 const reportRoutes = require("./routes/reportRoutes");
+const mongoose = require("mongoose");
 
 require("dotenv").config();
 
@@ -23,6 +24,7 @@ app.use("/api/evidences", require("./routes/evidenceRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
 app.use("/api/dental-records", require("./routes/dentalRecordRoutes"));
 app.use("/api", reportRoutes);
+app.use("/api/patients", require("./routes/patientRoutes"));
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend/public/login.html"));

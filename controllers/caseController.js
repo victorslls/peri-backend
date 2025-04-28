@@ -111,6 +111,7 @@ exports.getCases = async (req, res) => {
       Case.find(filtro)
         .populate("responsible", "name email")
         .populate("createdBy", "name email")
+        .populate("patient", "name numberOfTeeth hasActiveCavities")
         .populate({
           path: "evidences",
           select: "type filePath content annotations createdAt",
@@ -166,6 +167,7 @@ exports.getCaseById = async (req, res) => {
     const foundCase = await Case.findById(caseId)
       .populate("responsible", "name email")
       .populate("createdBy", "name email")
+      .populate("patient", "name numberOfTeeth hasActiveCavities")
       .populate({
         path: "evidences",
         select: "type filePath content annotations createdAt",

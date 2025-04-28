@@ -24,6 +24,10 @@ const caseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    patient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Patient",
+    },
     data: { type: Date, required: true, default: Date.now },
     historico: { type: String },
     analises: { type: String },
