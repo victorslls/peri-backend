@@ -18,6 +18,18 @@ const caseSchema = Joi.object({
   analises: Joi.string().allow("").optional(),
 });
 
+// Validação do parâmetro ID
+const idParamSchema = Joi.object({
+  id: Joi.string()
+    .pattern(/^[0-9a-fA-F]{22,24}$/) // Aceita IDs com 22 ou 24 caracteres
+    .required()
+    .messages({
+      "string.pattern.base": "O ID deve ter 22 ou 24 caracteres hexadecimais",
+      "any.required": "O ID é obrigatório",
+      "string.empty": "O ID não pode estar vazio",
+    }),
+});
+
 router.post(
   "/",
   auth(["perito", "admin", "assistente"]),
@@ -30,5 +42,18 @@ router.put(
   caseController.updateCaseStatus
 );
 router.get("/", auth(), caseController.getCases);
+
+// Rota para buscar caso por ID
+router.get(
+  "/:id",
+  auth(),
+  (req, res, next) => {
+    // Log para debug
+    console.log("Parâmetros recebidos:", req.params);
+    next();
+  },
+  validate(idParamSchema, "params"),
+  caseController.getCaseById
+);
 
 module.exports = router;

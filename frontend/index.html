@@ -34,8 +34,8 @@
       const refreshToken = localStorage.getItem('refreshToken');
       
       if (token && refreshToken) {
-        // Se já tem tokens, redirecionar para o dashboard
-        window.location.href = '/dashboard.html';
+        // Se já tem tokens, redirecionar para o cases
+        window.location.href = '/cases.html';
         return;
       }
       
@@ -69,8 +69,8 @@
             expiresAt.setHours(expiresAt.getHours() + 1);
             localStorage.setItem('expiresAt', expiresAt.toISOString());
             
-            // Redirecionar para dashboard
-            window.location.href = '/dashboard.html';
+            // Redirecionar para cases
+            window.location.href = '/cases.html';
           } else {
             alert(data.msg || 'Erro ao fazer login');
           }

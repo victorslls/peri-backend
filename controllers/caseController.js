@@ -148,3 +148,63 @@ exports.getCases = async (req, res) => {
       .json({ message: "Erro ao buscar casos.", error: error.message });
   }
 };
+
+exports.getCaseById = async (req, res) => {
+  try {
+    const caseId = req.params.id;
+
+    // Log para debug
+    console.log("Buscando caso com ID:", caseId);
+
+    if (!caseId) {
+      return res.status(400).json({
+        success: false,
+        message: "ID do caso não fornecido",
+      });
+    }
+
+    const foundCase = await Case.findById(caseId)
+      .populate("responsible", "name email")
+      .populate("createdBy", "name email")
+      .populate({
+        path: "evidences",
+        select: "type filePath content annotations createdAt",
+        populate: { path: "uploadedBy", select: "name" },
+      })
+      .populate({
+        path: "reports",
+        select: "title type content status createdAt",
+        populate: { path: "createdBy", select: "name" },
+      });
+
+    if (!foundCase) {
+      return res.status(404).json({
+        success: false,
+        message: "Caso não encontrado",
+      });
+    }
+
+    // Registrar atividade de visualização
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "Caso visualizado",
+      details: caseId,
+    });
+
+    // Log do caso encontrado
+    console.log("Caso encontrado:", foundCase._id);
+
+    res.status(200).json({
+      success: true,
+      message: "Caso encontrado com sucesso",
+      data: foundCase,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar caso por ID:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao buscar caso",
+      error: error.message,
+    });
+  }
+};
