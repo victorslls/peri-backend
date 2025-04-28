@@ -37,7 +37,7 @@ exports.createCase = async (req, res) => {
       .populate({
         path: "reports",
         select: "content pdfPath createdAt",
-        populate: { path: "generatedBy", select: "name" },
+        populate: { path: "createdBy", select: "name" },
       });
 
     res.status(201).json({
@@ -70,7 +70,7 @@ exports.updateCaseStatus = async (req, res) => {
       .populate({
         path: "reports",
         select: "content pdfPath createdAt",
-        populate: { path: "generatedBy", select: "name" },
+        populate: { path: "createdBy", select: "name" },
       });
 
     if (!updatedCase)
@@ -119,7 +119,7 @@ exports.getCases = async (req, res) => {
         .populate({
           path: "reports",
           select: "content pdfPath createdAt",
-          populate: { path: "generatedBy", select: "name" },
+          populate: { path: "createdBy", select: "name" },
         })
         .skip(skip)
         .limit(limit)
