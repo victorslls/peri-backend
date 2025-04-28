@@ -1,17 +1,35 @@
-const Report = require('../models/Report');
-const ActivityLog = require('../models/ActivityLog');
-const generatePDF = require('../utils/pdfGenerator');
-const logger = require('../utils/logger');
+const Report = require("../models/Report");
+const Case = require("../models/Case");
+const ActivityLog = require("../models/ActivityLog");
+const generatePDF = require("../utils/pdfGenerator");
+const logger = require("../utils/logger");
 
 exports.createReport = async (req, res) => {
-  const { caseId, content, attachments } = req.body;
-
   try {
+    const { caseId, title, content, type } = req.body;
+
+    // Verificar se o caso existe
+    const caso = await Case.findById(caseId);
+    if (!caso) {
+      return res.status(404).json({ message: "Caso não encontrado" });
+    }
+
+    // Verificar permissão
+    if (
+      req.user.role !== "admin" &&
+      caso.createdBy.toString() !== req.user.id
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Sem permissão para criar laudo neste caso" });
+    }
+
     const report = new Report({
-      caseId,
+      case: caseId,
+      title,
       content,
-      attachments: attachments || [],
-      generatedBy: req.user.id,
+      type,
+      createdBy: req.user.id,
     });
 
     const pdfPath = `${process.env.UPLOAD_DIR}/report-${report._id}.pdf`;
@@ -19,11 +37,104 @@ exports.createReport = async (req, res) => {
     report.pdfPath = pdfPath;
 
     await report.save();
-    await ActivityLog.create({ userId: req.user.id, action: 'Laudo gerado', details: report._id });
 
-    res.status(201).json(report);
+    // Atualiza o caso com o novo laudo
+    await Case.findByIdAndUpdate(
+      caseId,
+      { $push: { reports: report._id } },
+      { new: true }
+    );
+
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "Laudo gerado",
+      details: report._id,
+    });
+
+    // Retorna o laudo populado
+    const populatedReport = await Report.findById(report._id)
+      .populate("createdBy", "name email")
+      .populate("case", "title type");
+
+    return res.status(201).json({
+      success: true,
+      data: populatedReport,
+    });
   } catch (error) {
-    logger.error('Erro ao gerar laudo:', error);
-    res.status(500).json({ msg: 'Erro no servidor' });
+    console.error("Erro ao criar laudo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao criar laudo",
+      error: error.message,
+    });
+  }
+};
+
+exports.getReports = async (req, res) => {
+  try {
+    const { caseId } = req.query;
+    let query = {};
+
+    if (caseId) {
+      query.case = caseId;
+    }
+
+    // Se não for admin, só pode ver laudos dos seus casos
+    if (req.user.role !== "admin") {
+      const userCases = await Case.find({ createdBy: req.user.id });
+      const userCaseIds = userCases.map((c) => c._id);
+      query.case = { $in: userCaseIds };
+    }
+
+    const reports = await Report.find(query)
+      .populate("case", "title type")
+      .populate("createdBy", "name");
+
+    return res.json({
+      success: true,
+      data: reports,
+    });
+  } catch (error) {
+    console.error("Erro ao buscar laudos:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao buscar laudos",
+      error: error.message,
+    });
+  }
+};
+
+exports.downloadReport = async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const report = await Report.findById(reportId).populate("case");
+
+    if (!report) {
+      return res.status(404).json({ message: "Laudo não encontrado" });
+    }
+
+    // Verificar permissão
+    if (
+      req.user.role !== "admin" &&
+      report.case.createdBy.toString() !== req.user.id
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Sem permissão para baixar este laudo" });
+    }
+
+    // Aqui você pode implementar a lógica de download do arquivo
+    // Por enquanto, vamos retornar os dados do laudo
+    return res.json({
+      success: true,
+      data: report,
+    });
+  } catch (error) {
+    console.error("Erro ao baixar laudo:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao baixar laudo",
+      error: error.message,
+    });
   }
 };

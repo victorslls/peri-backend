@@ -3,15 +3,20 @@ const ActivityLog = require("../models/ActivityLog");
 const logger = require("../utils/logger");
 
 exports.createCase = async (req, res) => {
-  const { title, description, type } = req.body;
+  const { title, description, type, status, data, historico, analises } =
+    req.body;
 
   try {
     const newCase = new Case({
       title,
       description,
       type,
+      status: status || "em_andamento",
       responsible: req.user.id,
       createdBy: req.user.id,
+      data: data || new Date(),
+      historico,
+      analises,
     });
 
     await newCase.save();
@@ -21,10 +26,27 @@ exports.createCase = async (req, res) => {
       details: newCase._id,
     });
 
-    res.status(201).json(newCase);
+    const populatedCase = await Case.findById(newCase._id)
+      .populate("responsible", "name email")
+      .populate("createdBy", "name email")
+      .populate({
+        path: "evidences",
+        select: "type filePath content annotations createdAt",
+        populate: { path: "uploadedBy", select: "name" },
+      })
+      .populate({
+        path: "reports",
+        select: "content pdfPath createdAt",
+        populate: { path: "generatedBy", select: "name" },
+      });
+
+    res.status(201).json({
+      message: "Caso criado com sucesso",
+      data: populatedCase,
+    });
   } catch (error) {
     logger.error("Erro ao criar caso:", error);
-    res.status(500).json({ msg: "Erro no servidor" });
+    res.status(500).json({ message: "Erro no servidor" });
   }
 };
 
@@ -37,31 +59,92 @@ exports.updateCaseStatus = async (req, res) => {
       caseId,
       { status },
       { new: true }
-    );
+    )
+      .populate("responsible", "name email")
+      .populate("createdBy", "name email")
+      .populate({
+        path: "evidences",
+        select: "type filePath content annotations createdAt",
+        populate: { path: "uploadedBy", select: "name" },
+      })
+      .populate({
+        path: "reports",
+        select: "content pdfPath createdAt",
+        populate: { path: "generatedBy", select: "name" },
+      });
+
     if (!updatedCase)
-      return res.status(404).json({ msg: "Caso não encontrado" });
+      return res.status(404).json({ message: "Caso não encontrado" });
 
     await ActivityLog.create({
       userId: req.user.id,
       action: "Status do caso atualizado",
       details: caseId,
     });
-    res.json(updatedCase);
+
+    res.json({
+      message: "Status atualizado com sucesso",
+      data: updatedCase,
+    });
   } catch (error) {
     logger.error("Erro ao atualizar caso:", error);
-    res.status(500).json({ msg: "Erro no servidor" });
+    res.status(500).json({ message: "Erro no servidor" });
   }
 };
 
 exports.getCases = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const filtro = {};
-    if (req.query.tipo) {
-      filtro.type = req.query.tipo;
+
+    if (req.query.type) {
+      filtro.type = req.query.type;
     }
-    const casos = await Case.find(filtro);
-    res.status(200).json(casos);
+    if (req.query.status && req.query.status !== "todos") {
+      filtro.status = req.query.status;
+    }
+
+    const [casos, total] = await Promise.all([
+      Case.find(filtro)
+        .populate("responsible", "name email")
+        .populate("createdBy", "name email")
+        .populate({
+          path: "evidences",
+          select: "type filePath content annotations createdAt",
+          populate: { path: "uploadedBy", select: "name" },
+        })
+        .populate({
+          path: "reports",
+          select: "content pdfPath createdAt",
+          populate: { path: "generatedBy", select: "name" },
+        })
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      Case.countDocuments(filtro),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      message: "Casos recuperados com sucesso",
+      data: {
+        cases: casos,
+        pagination: {
+          total,
+          pages: totalPages,
+          currentPage: page,
+          limit,
+        },
+      },
+    });
   } catch (error) {
-    res.status(500).json({ msg: "Erro ao buscar casos.", error });
+    logger.error("Erro ao buscar casos:", error);
+    res
+      .status(500)
+      .json({ message: "Erro ao buscar casos.", error: error.message });
   }
 };

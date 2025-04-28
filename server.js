@@ -3,7 +3,7 @@ const connectDB = require("./config/db");
 const cors = require("./config/cors");
 const errorHandler = require("./middleware/errorHandler");
 const path = require("path");
-const laudoRoutes = require("./routes/laudoRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 require("dotenv").config();
 
@@ -22,7 +22,7 @@ app.use("/api/cases", require("./routes/caseRoutes"));
 app.use("/api/evidences", require("./routes/evidenceRoutes"));
 app.use("/api/reports", require("./routes/reportRoutes"));
 app.use("/api/dental-records", require("./routes/dentalRecordRoutes"));
-app.use("/api", laudoRoutes);
+app.use("/api", reportRoutes);
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend/public/login.html"));
