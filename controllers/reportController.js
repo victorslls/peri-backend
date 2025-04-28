@@ -6,9 +6,9 @@ const logger = require("../utils/logger");
 
 exports.createReport = async (req, res) => {
   try {
-    const { caseId, title, content, type } = req.body;
+    const { case: caseId, title, content, type, status } = req.body;
+    const files = req.files;
 
-    // Verificar se o caso existe
     const caso = await Case.findById(caseId);
     if (!caso) {
       return res.status(404).json({ message: "Caso não encontrado" });
@@ -19,17 +19,28 @@ exports.createReport = async (req, res) => {
       req.user.role !== "admin" &&
       caso.createdBy.toString() !== req.user.id
     ) {
-      return res
-        .status(403)
-        .json({ message: "Sem permissão para criar laudo neste caso" });
+      return res.status(403).json({
+        message: "Sem permissão para criar laudo neste caso",
+      });
     }
+
+    // Processar anexos
+    const attachments = files
+      ? files.map((file) => ({
+          filename: file.originalname,
+          path: file.path,
+          uploadedAt: new Date(),
+        }))
+      : [];
 
     const report = new Report({
       case: caseId,
       title,
       content,
       type,
+      status: status || "rascunho",
       createdBy: req.user.id,
+      attachments,
     });
 
     const pdfPath = `${process.env.UPLOAD_DIR}/report-${report._id}.pdf`;

@@ -23,7 +23,7 @@ router.post(
   "/",
   auth(["perito", "admin", "assistente"]),
   upload.array("files", 5), // Permite até 5 arquivos
-  validate(evidenceSchema),
+  // validate(evidenceSchema),
   evidenceController.uploadEvidence
 );
 router.get("/", auth(), evidenceController.listarEvidencias);

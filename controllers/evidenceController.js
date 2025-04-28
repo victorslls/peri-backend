@@ -23,18 +23,16 @@ exports.listarEvidencias = async (req, res) => {
 };
 
 exports.uploadEvidence = async (req, res) => {
-  const { caseId, type, content, annotations } = req.body;
-  const file = req.file;
-
   try {
-    // Verifica campos obrigatórios
+    const { caseId, type, content, annotations } = req.body;
+    const files = req.files;
+
     if (!caseId || !type) {
-      return res
-        .status(400)
-        .json({ message: "Campos obrigatórios: caseId e type." });
+      return res.status(400).json({
+        message: "Campos obrigatórios: caseId e type.",
+      });
     }
 
-    // Verifica se o caso existe
     const caso = await Case.findById(caseId);
     if (!caso) {
       return res.status(404).json({ message: "Caso não encontrado." });
@@ -56,10 +54,10 @@ exports.uploadEvidence = async (req, res) => {
     const evidence = new Evidence({
       caseId,
       type,
-      filePath: file ? file.path : undefined,
-      content: type === "texto" ? content : undefined,
+      content: content || "",
       annotations: parsedAnnotations,
       uploadedBy: req.user.id,
+      filePaths: files ? files.map((file) => file.path) : [],
     });
 
     await evidence.save();
@@ -88,9 +86,9 @@ exports.uploadEvidence = async (req, res) => {
     });
   } catch (error) {
     logger.error("Erro ao adicionar evidência:", error);
-    res
-      .status(500)
-      .json({ message: "Erro no servidor ao salvar a evidência." });
+    res.status(500).json({
+      message: "Erro no servidor ao salvar a evidência.",
+    });
   }
 };
 
