@@ -56,4 +56,12 @@ router.get(
   caseController.getCaseById
 );
 
+// Rota para deletar caso
+router.delete(
+  "/:id",
+  auth(["perito", "admin"]),
+  validate(idParamSchema, "params"),
+  caseController.deleteCase
+);
+
 module.exports = router;

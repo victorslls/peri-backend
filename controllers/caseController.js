@@ -210,3 +210,53 @@ exports.getCaseById = async (req, res) => {
     });
   }
 };
+
+exports.deleteCase = async (req, res) => {
+  try {
+    const caseId = req.params.id;
+
+    // Log para debug
+    console.log("Tentando deletar caso com ID:", caseId);
+
+    const caseToDelete = await Case.findById(caseId);
+
+    if (!caseToDelete) {
+      return res.status(404).json({
+        success: false,
+        message: "Caso não encontrado",
+      });
+    }
+
+    // Verificar se o usuário tem permissão para deletar o caso
+    if (
+      !["admin", "perito"].includes(req.user.role) &&
+      caseToDelete.createdBy.toString() !== req.user.id
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Sem permissão para deletar este caso",
+      });
+    }
+
+    await Case.findByIdAndDelete(caseId);
+
+    // Registrar a atividade de deleção
+    await ActivityLog.create({
+      userId: req.user.id,
+      action: "Caso deletado",
+      details: caseId,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Caso deletado com sucesso",
+    });
+  } catch (error) {
+    logger.error("Erro ao deletar caso:", error);
+    res.status(500).json({
+      success: false,
+      message: "Erro ao deletar caso",
+      error: error.message,
+    });
+  }
+};
