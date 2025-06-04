@@ -6,6 +6,8 @@ from dataclasses import datatime, asdict
 import random
 from datetime import datetime, timedelta
 from flask import request, abort, jsonify
+from flask import request, abort
+
 
 
 
@@ -109,6 +111,51 @@ def deletar_caso(data_caso):
         abort(404, "Caso não encontrado.")
     return jsonify({"message": "Caso deletado"}), 200
 
+
+
+
+@app.route('/api/associacoes', methods =['GET'])
+def associacoes():
+    documentos = list(colecao.find({}, {"_id": 0}))
+    if not documentos:
+        return jsonify({"message": "sem dados na coleção"}), 400
+    lista = []
+    for d in documentos:
+        vitima = d.get("vitima", {})
+        lista.append({
+            "idade": vitima.get("idade"),
+            "etnia": vitima.get("etnia"),
+            "localizacao": d.get("localizacao"),
+            "tipo_do_caso": d.get("tipo_do_caso")
+        })
+    df = pd.DataFrame(lista).dropna()
+    try:
+        x= df[["idade", "etnia", "localizacao"]]
+        #placehold
+        return jsonify({"message": "Endpoint pronto para implementar analise"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao processar modelo: {str(e)}"}), 500
+    
+
+@app.route('/api/predizer', methods =['POST'])
+def predizer():
+    dados = request.get_json()
+    if not dados or not all(k in dados for k in ("idade", "etnia", "localizacao")):
+        return jsonify(["erro": "JSON inváldo. esperadp: idade, etnia, localizacao"]), 400
+    try:
+        df = pd.Dataframe([dados])
+        y_prob = modelo.predict_proba(df)[0]
+        y_pred_encoded = modelo.predict(df)[0]
+        y_pred = label_encoder.inverse_transform([y_pred_encoded])[0]
+        classes = label_encoder.classes_
+        resultado ={
+            "classe_predita": y_pred,
+            "probabilidades": {classe: round(prob, 4) for classe, prob in zip(classes, y_prob)}
+        }
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify(["error": f"Erro ao fazer predição: {str(e)}"]), 500
+    
 
 def hello():
     return "Bem-vindo à API de análise de casos criminais"
